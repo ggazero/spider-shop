@@ -86,6 +86,30 @@ function paintCheckout(){
  if(!Cart.count()){form.innerHTML='<div class="empty"><p>먼저 후원 물품을 선택해 주세요.</p><a class="btn" href="index.html#supplies">보급품 고르기</a></div>';return;}
  document.querySelector('#checkout-summary').innerHTML=totals();
  document.querySelector('#pay-total').textContent=won(Cart.total()+Cart.shipping());
+ // 데이터 영역이 아직 없을 때도 동작하도록 안전 초기화
+ window.dataLayer = window.dataLayer || [];
+ const checkoutItems = Cart.read();
+ // 전체 상품 10% 할인 — 할인 후 상품 금액 (배송비 제외)
+ const saleTotal = checkoutItems.reduce((s,i)=>s+findProduct(i.id).price*0.9*i.qty,0);
+ // 앞에서 넣은 상품 값 비우기
+ window.dataLayer.push({ ecommerce: null });
+ window.dataLayer.push({
+   event: 'begin_checkout',
+   free_shipping: saleTotal >= 40000 ? 'yes' : 'no',
+   ecommerce: {
+     currency: 'KRW',
+     value: saleTotal,
+     items: checkoutItems.map(i => {
+       const p = findProduct(i.id);
+       return {
+         item_id: p.id,
+         item_name: p.name,
+         price: p.price * 0.9,
+         quantity: i.qty
+       };
+     })
+   }
+ });
  form.addEventListener('submit',e=>{e.preventDefault();if(!Cart.count()){paintCheckout();return;}try{Cart.clear();form.querySelector('button').disabled=true;location.href='done.html';}catch{form.querySelector('button').textContent='저장소 설정을 확인하고 다시 접수하기';}});
 }
 function paintProse(){for(const [selector,key]of [['#about-body','about'],['#shipping-body','shipping']]){const box=document.querySelector(selector);if(box)box.innerHTML=SHOP[key].map(([title,body])=>briefing(title,body)).join('');}}
