@@ -52,7 +52,27 @@ function paintDetail() {
  const p=findProduct(qs('id')); if(!p){box.innerHTML='<div class="empty"><h1>보급품을 찾을 수 없습니다.</h1><a class="btn" href="index.html#supplies">보급 목록 확인하기</a></div>';return;}
  document.title=p.name+' — '+SHOP.name;
  box.innerHTML=`${thumb(p)}<div><p class="eyebrow">${p.code} / SUPPORT GEAR</p><p class="status-tag">SUPPORT ONLY</p><h1>${p.name}</h1><p class="lead">${p.summary}</p><div class="price">${won(p.price)}</div><div class="prose"><p>${p.detail[0]}</p><h2>이런 밤에 필요합니다</h2><p>${p.detail[1]}</p></div>${briefing(p.detail[2],p.detail[3])}${briefing('보급 전달 및 교환 안내','상품 합계 50,000원 이상 무료 배송, 미만은 3,000원. 발송은 영업일 기준 2일 이내, 교환·반품은 수령 후 7일 이내입니다.')}<button class="btn" id="add-to-cart">후원 목록에 담기 ↗</button><p id="cart-status" role="status" class="micro">가상의 장비 콘셉트 · 모의 주문 가능</p></div>`;
- document.querySelector('#add-to-cart').addEventListener('click',e=>{try {Cart.add(p.id);e.currentTarget.disabled=true;location.href='cart.html';}catch {document.querySelector('#cart-status').textContent='목록을 저장할 수 없습니다. 브라우저의 저장소 설정을 확인해 주세요.';}});
+ document.querySelector('#add-to-cart').addEventListener('click',e=>{try {Cart.add(p.id);
+   // 데이터 영역이 아직 없을 때도 동작하도록 안전 초기화
+   window.dataLayer = window.dataLayer || [];
+   // 전체 상품 10% 할인 — 할인 후 상품 금액 (배송비 제외)
+   const salePrice = p.price * 0.9;
+   // 앞에서 넣은 상품 값 비우기
+   window.dataLayer.push({ ecommerce: null });
+   window.dataLayer.push({
+     event: 'add_to_cart',
+     ecommerce: {
+       currency: 'KRW',
+       value: salePrice,
+       items: [{
+         item_id: p.id,
+         item_name: p.name,
+         price: salePrice,
+         quantity: 1
+       }]
+     }
+   });
+   e.currentTarget.disabled=true;location.href='cart.html';}catch {document.querySelector('#cart-status').textContent='목록을 저장할 수 없습니다. 브라우저의 저장소 설정을 확인해 주세요.';}});
 }
 function totals() {return `<div class="cost-lines"><p><span>보급품 금액</span><strong>${won(Cart.total())}</strong></p><p><span>전달 비용</span><strong>${Cart.shipping()?won(Cart.shipping()):'무료'}</strong></p></div>`;}
 function paintCart() {
