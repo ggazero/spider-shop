@@ -55,19 +55,18 @@ function paintDetail() {
  document.querySelector('#add-to-cart').addEventListener('click',e=>{try {Cart.add(p.id);
    // 데이터 영역이 아직 없을 때도 동작하도록 안전 초기화
    window.dataLayer = window.dataLayer || [];
-   // 전체 상품 10% 할인 — 할인 후 상품 금액 (배송비 제외)
-   const salePrice = p.price * 0.9;
    // 앞에서 넣은 상품 값 비우기
    window.dataLayer.push({ ecommerce: null });
    window.dataLayer.push({
      event: 'add_to_cart',
      ecommerce: {
        currency: 'KRW',
-       value: salePrice,
+       // 상품 정가 × 수량(1), 배송비 제외
+       value: p.price,
        items: [{
          item_id: p.id,
          item_name: p.name,
-         price: salePrice,
+         price: p.price,
          quantity: 1
        }]
      }
@@ -89,28 +88,57 @@ function paintCheckout(){
  // 데이터 영역이 아직 없을 때도 동작하도록 안전 초기화
  window.dataLayer = window.dataLayer || [];
  const checkoutItems = Cart.read();
- // 전체 상품 10% 할인 — 할인 후 상품 금액 (배송비 제외)
- const saleTotal = checkoutItems.reduce((s,i)=>s+findProduct(i.id).price*0.9*i.qty,0);
+ // 상품 정가 × 수량의 합계, 배송비 제외
+ const itemsTotal = checkoutItems.reduce((s,i)=>s+findProduct(i.id).price*i.qty,0);
  // 앞에서 넣은 상품 값 비우기
  window.dataLayer.push({ ecommerce: null });
  window.dataLayer.push({
    event: 'begin_checkout',
-   free_shipping: saleTotal >= 40000 ? 'yes' : 'no',
+   // 상품 합계 50000 이상이면 yes, 미만이면 no
+   free_shipping: itemsTotal >= 50000 ? 'yes' : 'no',
    ecommerce: {
      currency: 'KRW',
-     value: saleTotal,
+     value: itemsTotal,
      items: checkoutItems.map(i => {
        const p = findProduct(i.id);
        return {
          item_id: p.id,
          item_name: p.name,
-         price: p.price * 0.9,
+         price: p.price,
          quantity: i.qty
        };
      })
    }
  });
- form.addEventListener('submit',e=>{e.preventDefault();if(!Cart.count()){paintCheckout();return;}try{Cart.clear();form.querySelector('button').disabled=true;location.href='done.html';}catch{form.querySelector('button').textContent='저장소 설정을 확인하고 다시 접수하기';}});
+ form.addEventListener('submit',e=>{e.preventDefault();if(!Cart.count()){paintCheckout();return;}try{
+   // 장바구니를 비우기 전에 주문 상품을 읽어 둔다
+   const orderItems = Cart.read();
+   // 상품 정가 × 수량의 합계, 배송비 제외
+   const orderTotal = orderItems.reduce((s,i)=>s+findProduct(i.id).price*i.qty,0);
+   // 주문마다 겹치지 않는 주문 번호
+   const transactionId = 'T' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+   // 데이터 영역이 아직 없을 때도 동작하도록 안전 초기화
+   window.dataLayer = window.dataLayer || [];
+   // 앞에서 넣은 상품 값 비우기
+   window.dataLayer.push({ ecommerce: null });
+   window.dataLayer.push({
+     event: 'purchase',
+     ecommerce: {
+       transaction_id: transactionId,
+       currency: 'KRW',
+       value: orderTotal,
+       items: orderItems.map(i => {
+         const p = findProduct(i.id);
+         return {
+           item_id: p.id,
+           item_name: p.name,
+           price: p.price,
+           quantity: i.qty
+         };
+       })
+     }
+   });
+   Cart.clear();form.querySelector('button').disabled=true;location.href='done.html';}catch{form.querySelector('button').textContent='저장소 설정을 확인하고 다시 접수하기';}});
 }
 function paintProse(){for(const [selector,key]of [['#about-body','about'],['#shipping-body','shipping']]){const box=document.querySelector(selector);if(box)box.innerHTML=SHOP[key].map(([title,body])=>briefing(title,body)).join('');}}
 // Finish hiding only after the reverse animation; cancel stale timers on rapid clicks.
